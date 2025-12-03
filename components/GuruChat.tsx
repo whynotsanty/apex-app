@@ -13,6 +13,7 @@ interface GuruChatProps {
 }
 
 const MAX_FREE_MESSAGES_PER_DAY = 5;
+const MAX_FREE_HABITS = 10;
 
 export const GuruChat: React.FC<GuruChatProps> = ({ 
     lang, onAddRoutines, isPro, onShowPaywall, currentRoutineCount 
@@ -90,7 +91,7 @@ export const GuruChat: React.FC<GuruChatProps> = ({
 
   const handleAddSuggested = (routines: Routine[]) => {
       // Check limit before adding from Guru
-      if (!isPro && currentRoutineCount + routines.length > 10) {
+      if (!isPro && currentRoutineCount + routines.length > MAX_FREE_HABITS) {
           onShowPaywall();
           return;
       }
@@ -138,9 +139,15 @@ export const GuruChat: React.FC<GuruChatProps> = ({
                             {msg.text}
                         </div>
 
-                        {/* Action Card for Suggestions - Now uses ProtocolCard for selection */}
+                        {/* Action Card for Suggestions */}
                         {msg.suggestedRoutines && msg.suggestedRoutines.length > 0 && (
-                            <ProtocolCard routines={msg.suggestedRoutines} onAdd={handleAddSuggested} />
+                            <ProtocolCard 
+                                routines={msg.suggestedRoutines} 
+                                onAdd={handleAddSuggested} 
+                                isPro={isPro}
+                                currentRoutineCount={currentRoutineCount}
+                                onShowPaywall={onShowPaywall}
+                            />
                         )}
                     </div>
                 </div>
@@ -199,20 +206,54 @@ export const GuruChat: React.FC<GuruChatProps> = ({
 };
 
 // Sub-component to manage selection state for each chat message separately
-const ProtocolCard = ({ routines, onAdd }: { routines: any[], onAdd: (r: any[]) => void }) => {
+const ProtocolCard = ({ 
+    routines, 
+    onAdd, 
+    isPro, 
+    currentRoutineCount, 
+    onShowPaywall 
+}: { 
+    routines: any[], 
+    onAdd: (r: any[]) => void,
+    isPro: boolean,
+    currentRoutineCount: number,
+    onShowPaywall: () => void
+}) => {
     const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
     const [isAdded, setIsAdded] = useState(false);
 
-    // Auto-select all on mount
+    // Initial Selection: Only select up to the free limit
     useEffect(() => {
-        setSelectedIndices(routines.map((_, i) => i));
-    }, [routines]);
+        const allIndices = routines.map((_, i) => i);
+        if (!isPro) {
+            const remainingSlots = Math.max(0, MAX_FREE_HABITS - currentRoutineCount);
+            // Select only what fits
+            setSelectedIndices(allIndices.slice(0, remainingSlots));
+        } else {
+            // Select all if Pro
+            setSelectedIndices(allIndices);
+        }
+    }, [routines, isPro, currentRoutineCount]);
 
     const toggleIndex = (index: number) => {
         if (isAdded) return; // Lock after adding
-        setSelectedIndices(prev => 
-            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
-        );
+        
+        const isSelected = selectedIndices.includes(index);
+        
+        if (isSelected) {
+            // Deselect is always allowed
+            setSelectedIndices(prev => prev.filter(i => i !== index));
+        } else {
+            // Select check
+            if (!isPro) {
+                const remainingSlots = Math.max(0, MAX_FREE_HABITS - currentRoutineCount);
+                if (selectedIndices.length >= remainingSlots) {
+                    onShowPaywall();
+                    return;
+                }
+            }
+            setSelectedIndices(prev => [...prev, index]);
+        }
     };
 
     const handleConfirm = () => {
@@ -221,13 +262,22 @@ const ProtocolCard = ({ routines, onAdd }: { routines: any[], onAdd: (r: any[]) 
         setIsAdded(true);
     };
 
+    const remainingSlots = isPro ? 9999 : Math.max(0, MAX_FREE_HABITS - currentRoutineCount);
+
     return (
         <div className="bg-blue-50 dark:bg-[#0f121a] border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 mt-2 overflow-hidden relative transition-colors">
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
             <div className="flex justify-between items-center mb-2 pl-2">
                 <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Protocol Detected</p>
                 {!isAdded && (
-                    <span className="text-[10px] text-blue-400 dark:text-blue-500/70">{selectedIndices.length} Selected</span>
+                    <div className="flex items-center gap-2">
+                        {!isPro && (
+                            <span className="text-[9px] text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                                {remainingSlots} slots left
+                            </span>
+                        )}
+                        <span className="text-[10px] text-blue-400 dark:text-blue-500/70">{selectedIndices.length} Selected</span>
+                    </div>
                 )}
             </div>
             

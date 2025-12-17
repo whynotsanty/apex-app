@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Tab } from '../types';
-import { Layout, CheckSquare, Sparkles, Crown } from 'lucide-react';
+import { Layout, CheckSquare, Sparkles, Crown, Book } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -17,51 +17,53 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, on
         
         <button
           onClick={() => onTabChange('tracker')}
-          className={`relative px-6 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
+          className={`relative px-4 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'tracker' 
               ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_15px_-3px_rgba(6,182,212,0.4)]' 
               : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
           }`}
         >
           <Layout size={20} className={activeTab === 'tracker' ? 'fill-white/20' : ''} />
-          {activeTab === 'tracker' && (
-             <span className="text-xs font-bold animate-in fade-in slide-in-from-left-2 duration-300">Tracker</span>
-          )}
+        </button>
+
+        <button
+          onClick={() => onTabChange('journal')}
+          className={`relative px-4 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'journal' 
+              ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)]' 
+              : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
+          }`}
+        >
+          <Book size={20} className={activeTab === 'journal' ? 'fill-white/20' : ''} />
         </button>
 
         <button
           onClick={() => onTabChange('tasks')}
-          className={`relative px-6 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
+          className={`relative px-4 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'tasks' 
               ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.4)]' 
               : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
           }`}
         >
           <CheckSquare size={20} className={activeTab === 'tasks' ? 'fill-white/20' : ''} />
-          {activeTab === 'tasks' && (
-             <span className="text-xs font-bold animate-in fade-in slide-in-from-left-2 duration-300">Focus</span>
-          )}
         </button>
 
         <button
           onClick={() => onTabChange('guru')}
-          className={`relative px-6 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
+          className={`relative px-4 py-3 rounded-full transition-all duration-300 flex items-center gap-2 ${
             activeTab === 'guru' 
               ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.4)]' 
               : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'
           }`}
         >
           <Sparkles size={20} className={activeTab === 'guru' ? 'fill-white/20' : ''} />
-          {activeTab === 'guru' && (
-             <span className="text-xs font-bold animate-in fade-in slide-in-from-left-2 duration-300">Guru</span>
-          )}
         </button>
 
         <div className="w-px h-8 bg-gray-200 dark:bg-zinc-800 mx-1"></div>
 
         <button
           onClick={onOpenPro}
-          className={`relative px-4 py-3 rounded-full transition-all duration-300 flex items-center justify-center gap-2 ${
+          className={`relative px-3 py-3 rounded-full transition-all duration-300 flex items-center justify-center gap-2 ${
             isPro
             ? 'text-amber-500 bg-amber-500/10'
             : 'text-gray-400 dark:text-zinc-500 hover:text-amber-500 dark:hover:text-amber-400'

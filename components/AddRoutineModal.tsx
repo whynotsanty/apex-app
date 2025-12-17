@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2, Plus, Settings2, Edit3, Check, CheckSquare, Square, Crown, Lock, BookOpen } from 'lucide-react';
+import { X, Sparkles, Loader2, Plus, Settings2, Edit3, Check, CheckSquare, Square, Crown, Lock, Calendar, Target, ShieldBan } from 'lucide-react';
 import { generateRoutineSuggestions } from '../services/geminiService';
 import { Routine, Language, Blueprint } from '../types';
 
@@ -15,6 +15,9 @@ interface AddRoutineModalProps {
 }
 
 type Mode = 'ai' | 'manual' | 'titans';
+type HabitType = 'positive' | 'negative';
+
+const DAYS_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // Predefined Titans Data
 const TITAN_BLUEPRINTS: Blueprint[] = [
@@ -81,8 +84,15 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
 
   // Manual State
+  const [habitType, setHabitType] = useState<HabitType>('positive');
   const [manualTitle, setManualTitle] = useState('');
   const [manualCategory, setManualCategory] = useState<Routine['category']>('Growth');
+  
+  // New Features State
+  const [manualDays, setManualDays] = useState<number[]>([0,1,2,3,4,5,6]);
+  const [targetValue, setTargetValue] = useState('');
+  const [targetUnit, setTargetUnit] = useState('');
+  const [lastRelapseDate, setLastRelapseDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const resetAndClose = () => {
     onClose();
@@ -92,6 +102,11 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
     setRoutineCount(3);
     setManualTitle('');
     setManualCategory('Growth');
+    setManualDays([0,1,2,3,4,5,6]);
+    setTargetValue('');
+    setTargetUnit('');
+    setHabitType('positive');
+    setLastRelapseDate(new Date().toISOString().split('T')[0]);
     setMode('ai');
   };
 
@@ -103,7 +118,6 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
 
   if (!isOpen) return null;
 
-  // --- Limit Check Logic ---
   const MAX_FREE_HABITS = 10;
   const isLimitReached = !isPro && currentRoutineCount >= MAX_FREE_HABITS;
 
@@ -128,8 +142,15 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
       );
   };
 
+  const toggleDay = (dayIndex: number) => {
+      setManualDays(prev => 
+        prev.includes(dayIndex)
+        ? prev.filter(d => d !== dayIndex)
+        : [...prev, dayIndex]
+      );
+  };
+
   const handleAcceptAI = () => {
-    // Double check limit before adding
     if (isLimitReached) {
         onShowPaywall();
         return;
@@ -137,17 +158,16 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
 
     const selectedSuggestions = suggestions.filter((_, i) => selectedIndices.includes(i));
     
-    // If adding these exceeds limit? We let them add up to the limit or block? 
-    // For simplicity, just block if they are ALREADY at limit.
-    
     const newRoutines: Routine[] = selectedSuggestions.map(s => ({
         id: s.id!,
         title: s.title!,
         category: s.category as any,
+        type: 'positive',
         consistency: 0,
         completedDays: [false, false, false, false, false, false, false],
         iconColor: s.iconColor!,
-        streak: 0
+        streak: 0,
+        frequency: [0,1,2,3,4,5,6] 
     }));
     onAddRoutines(newRoutines);
     resetAndClose();
@@ -160,6 +180,7 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
       }
 
       if (!manualTitle.trim()) return;
+      if (habitType === 'positive' && manualDays.length === 0) return;
       
       const categoryColors: Record<string, string> = {
         'Career': 'from-cyan-500 to-blue-600',
@@ -168,14 +189,23 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
         'Mindset': 'from-purple-500 to-indigo-600',
       };
 
+      // Handle Negative Habit Color (Red/Darker)
+      const color = habitType === 'negative' 
+        ? 'from-red-600 to-rose-900' 
+        : (categoryColors[manualCategory] || 'from-gray-500 to-gray-700');
+
       const newRoutine: Routine = {
           id: `manual-${Date.now()}`,
           title: manualTitle,
           category: manualCategory,
+          type: habitType,
           consistency: 0,
           completedDays: [false, false, false, false, false, false, false],
-          iconColor: categoryColors[manualCategory] || 'from-gray-500 to-gray-700',
-          streak: 0
+          iconColor: color,
+          streak: 0,
+          frequency: habitType === 'positive' ? manualDays : undefined,
+          target: (habitType === 'positive' && targetValue) ? { value: parseInt(targetValue), unit: targetUnit || 'units' } : undefined,
+          startDate: habitType === 'negative' ? new Date(lastRelapseDate).getTime() : undefined
       };
 
       onAddRoutines([newRoutine]);
@@ -188,15 +218,16 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
           return;
       }
       
-      // Map blueprint routines to full routines
       const newRoutines: Routine[] = blueprint.routines.map((r, i) => ({
         id: `titan-${blueprint.id}-${i}-${Date.now()}`,
         title: r.title || 'Titan Habit',
         category: (r.category as any) || 'Growth',
+        type: 'positive',
         consistency: 0,
         completedDays: [false, false, false, false, false, false, false],
         iconColor: r.iconColor || 'from-gray-500 to-gray-700',
-        streak: 0
+        streak: 0,
+        frequency: [0,1,2,3,4,5,6]
       }));
 
       onAddRoutines(newRoutines);
@@ -371,17 +402,42 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
             {mode === 'manual' && (
                 /* Manual Mode Content */
                 <div className="space-y-5">
+                    
+                    {/* Habit Type Toggle */}
+                    <div className="flex bg-gray-50 dark:bg-zinc-900/50 p-1 rounded-xl border border-gray-200 dark:border-zinc-800">
+                        <button
+                            onClick={() => setHabitType('positive')}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                habitType === 'positive'
+                                ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                : 'text-gray-500 dark:text-zinc-500'
+                            }`}
+                        >
+                            Build Habit
+                        </button>
+                        <button
+                            onClick={() => setHabitType('negative')}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                habitType === 'negative'
+                                ? 'bg-white dark:bg-zinc-700 text-red-500 shadow-sm'
+                                : 'text-gray-500 dark:text-zinc-500'
+                            }`}
+                        >
+                            Quit Addiction
+                        </button>
+                    </div>
+
                     <div>
-                        <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-2 block">Routine Title</label>
+                        <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+                            {habitType === 'positive' ? 'Routine Title' : 'Addiction to Quit'}
+                        </label>
                         <input
                             type="text"
                             value={manualTitle}
                             onChange={(e) => setManualTitle(e.target.value)}
-                            placeholder="e.g. Read 10 pages"
+                            placeholder={habitType === 'positive' ? "e.g. Read 10 pages" : "e.g. Smoking"}
                             disabled={isLimitReached}
                             className="w-full bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl p-4 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddManual()}
-                            autoFocus
                         />
                     </div>
 
@@ -405,13 +461,81 @@ export const AddRoutineModal: React.FC<AddRoutineModalProps> = ({
                         </div>
                     </div>
 
+                    {/* Conditional Fields based on Type */}
+                    {habitType === 'positive' ? (
+                        <>
+                            {/* NEW: Frequency Selector */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Calendar size={12} className="text-gray-500 dark:text-zinc-500" />
+                                    <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Frequency</label>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                    {DAYS_SHORT.map((day, i) => {
+                                        const isSelected = manualDays.includes(i);
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => toggleDay(i)}
+                                                className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
+                                                    isSelected
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-700'
+                                                }`}
+                                            >
+                                                {day}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* NEW: Target Input (Measurable) */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Target size={12} className="text-gray-500 dark:text-zinc-500" />
+                                    <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Daily Target (Optional)</label>
+                                </div>
+                                <div className="flex gap-3">
+                                    <input 
+                                        type="number" 
+                                        placeholder="Value (e.g. 10)"
+                                        value={targetValue}
+                                        onChange={e => setTargetValue(e.target.value)}
+                                        className="w-1/3 bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Unit (e.g. pages, mins)"
+                                        value={targetUnit}
+                                        onChange={e => setTargetUnit(e.target.value)}
+                                        className="flex-1 bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div>
+                             <div className="flex items-center gap-2 mb-2">
+                                    <ShieldBan size={12} className="text-gray-500 dark:text-zinc-500" />
+                                    <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Last Relapse Date</label>
+                            </div>
+                            <input 
+                                type="date"
+                                value={lastRelapseDate}
+                                onChange={(e) => setLastRelapseDate(e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500"
+                            />
+                        </div>
+                    )}
+
                     <button
                         onClick={handleAddManual}
-                        disabled={!manualTitle || isLimitReached}
-                        className="w-full mt-8 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-zinc-200 disabled:opacity-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                        disabled={!manualTitle || isLimitReached || (habitType === 'positive' && manualDays.length === 0)}
+                        className="w-full mt-4 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-zinc-200 disabled:opacity-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                     >
                         <Plus size={20} />
-                        Create Routine
+                        {habitType === 'positive' ? 'Create Routine' : 'Start Protocol'}
                     </button>
                 </div>
             )}

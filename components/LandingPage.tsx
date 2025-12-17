@@ -64,7 +64,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       </main>
 
       <footer className="p-6 text-center text-gray-400 dark:text-zinc-600 text-xs relative z-10">
-        © {new Date().getFullYear()} Apex. Build your legacy.
+        © {new Date().getFullYear()} Apex. GJ Solutions.
       </footer>
     </div>
   );

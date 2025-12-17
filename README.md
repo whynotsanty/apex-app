@@ -86,6 +86,47 @@ The app is ready for deployment on modern hosting platforms.
 
 Feel free to open issues or PRs for improvements!
 
-## License
+## Mobile App (Android)
 
-This project is private.
+The app is now a PWA and can be wrapped as a native Android app using Capacitor.
+
+### Prerequisites
+- Android Studio installed
+- Java JDK 11+
+
+### Build Android App
+1. Install Capacitor dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Build the web app:
+   ```bash
+   npm run build
+   ```
+
+3. Add Android platform:
+   ```bash
+   npm run cap:add:android
+   ```
+
+4. Sync web assets:
+   ```bash
+   npm run cap:sync
+   ```
+
+5. Open in Android Studio:
+   ```bash
+   npm run cap:open:android
+   ```
+
+6. In Android Studio, build the APK (Build > Build Bundle(s)/APK(s) > Build APK).
+
+### Publish to Google Play Store
+1. Create a Google Play Console account.
+2. Create a new app in Play Console.
+3. Upload the signed APK.
+4. Fill in store listing, screenshots, etc.
+5. Submit for review.
+
+**Note**: For production, consider using a backend for API keys to avoid exposing them in the app.

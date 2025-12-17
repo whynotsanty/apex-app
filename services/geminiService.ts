@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Routine, ChatMessage } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 
 /**
  * Helper to clean Markdown code blocks from AI response
@@ -19,7 +19,7 @@ const cleanJSON = (text: string): string => {
 
 export const generateRoutineSuggestions = async (goal: string, count: number = 3): Promise<Partial<Routine>[]> => {
   try {
-    const model = "gemini-2.5-flash";
+    const model = "gemini-1.5-flash";
     const prompt = `I have a goal: "${goal}". Generate exactly ${count} specific, daily actionable habits/routines that will help me achieve this. 
     Return strictly JSON data. Categories must be one of: Career, Growth, Health, Mindset.`;
 
@@ -65,7 +65,7 @@ export const generateRoutineSuggestions = async (goal: string, count: number = 3
 
 export const chatWithGuru = async (history: ChatMessage[], newMessage: string, language: string): Promise<{ text: string, suggestedRoutines?: Partial<Routine>[] }> => {
   try {
-    const model = "gemini-2.5-flash";
+    const model = "gemini-1.5-flash";
     
     const systemInstruction = `You are 'Apex Guru', a high-performance productivity coach. 
     Language: ${language === 'pt' ? 'Portuguese' : 'English'}.
